@@ -60,8 +60,9 @@ check_swaps <- function(x, subject, prior = 0.01,
   res$level <- factor(res$level, levels = c("flag", "check", "ok"))
   attr(res, "power") <- out$power
   attr(res, "shifts") <- out$shifts
+  swap_power <- if (is.null(out$power$swap)) NA_real_ else out$power$swap
   message(sprintf("SwapSeq: %d strong flags, %d on the check list, out of %d samples. Power to catch swaps: %.0f%%.",
                   sum(res$level == "flag"), sum(res$level == "check"), nrow(res),
-                  100 * out$power$swap))
+                  100 * swap_power))
   res
 }
