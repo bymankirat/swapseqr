@@ -1,0 +1,19 @@
+Package: swapseqr
+Title: Detect Swapped and Mislabelled Samples in Longitudinal Microbiome Studies
+Version: 0.1.0
+Authors@R: 
+    person("Mankirat", "Singh", , "msinghsandal@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0009-0005-3375-2123"))
+Description: R interface to SwapSeq. Checks whether each sample came from the subject on its label, using each subject's microbial fingerprint, and reports swapped tubes, mislabelled samples and sample-sheet shifts.
+License: GPL (>= 3)
+Config/roxygen2/version: 8.1.1
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports: 
+    jsonlite,
+    methods,
+    V8
+Suggests: 
+    phyloseq
+URL: https://github.com/bymankirat/swapseqr, https://bymankirat.github.io/swapseq/
+BugReports: https://github.com/bymankirat/swapseqr/issues
