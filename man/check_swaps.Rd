@@ -24,7 +24,9 @@ For a matrix: a vector with one subject ID per sample.}
 \item{well, plate, household}{Optional: column names (phyloseq) or vectors (matrix).}
 }
 \value{
-A data frame with one row per sample. Power estimates are in \code{attr(result, "power")}.
+A data frame with one row per sample. Measured power (share of test
+swaps and relabels hidden in copies of your labels that were caught) is in
+\code{attr(result, "power")}.
 }
 \description{
 Runs SwapSeq on a microbiome count table and reports, for every sample,

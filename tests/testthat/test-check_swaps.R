@@ -60,3 +60,13 @@ test_that("phyloseq input gives the same answer as a matrix", {
   expect_equal(as.character(from_ps$level), as.character(from_mx$level))
   expect_equal(from_ps$probability, from_mx$probability)
 })
+
+test_that("power is measured on hidden test errors", {
+  st <- make_study()
+  res <- suppressMessages(check_swaps(st$counts, st$subject))
+  pw <- attr(res, "power")
+  expect_true(isTRUE(pw$measured))
+  expect_gt(pw$tests$swapped, 0)
+  # a toy study with strong individual signal: most hidden swaps are caught
+  expect_gt(pw$swap, 0.7)
+})

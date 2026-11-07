@@ -8,7 +8,9 @@
 #'   For a matrix: a vector with one subject ID per sample.
 #' @param prior Expected share of mislabelled samples (default 0.01 = 1%).
 #' @param well,plate,household Optional: column names (phyloseq) or vectors (matrix).
-#' @return A data frame with one row per sample. Power estimates are in `attr(result, "power")`.
+#' @return A data frame with one row per sample. Measured power (share of test
+#'   swaps and relabels hidden in copies of your labels that were caught) is in
+#'   `attr(result, "power")`.
 #' @importFrom methods as
 #' @export
 check_swaps <- function(x, subject, prior = 0.01,
@@ -61,7 +63,7 @@ check_swaps <- function(x, subject, prior = 0.01,
   attr(res, "power") <- out$power
   attr(res, "shifts") <- out$shifts
   swap_power <- if (is.null(out$power$swap)) NA_real_ else out$power$swap
-  message(sprintf("SwapSeq: %d strong flags, %d on the check list, out of %d samples. Power to catch swaps: %.0f%%.",
+  message(sprintf("SwapSeq: %d strong flags, %d on the check list, out of %d samples. Measured power to catch swaps: %.0f%%.",
                   sum(res$level == "flag"), sum(res$level == "check"), nrow(res),
                   100 * swap_power))
   res

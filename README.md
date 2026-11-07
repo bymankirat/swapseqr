@@ -56,12 +56,12 @@ You get one row per sample:
 | `partner` | the other sample in a likely swap |
 | `rare_*` | how many rare features it shares with its own subject and with the look-alike |
 
-`attr(res, "power")` estimates how likely this dataset is to catch a swap, given how distinct its subjects are.
+`attr(res, "power")` gives the measured power: SwapSeq hides a few test swaps and relabels in copies of your labels, reruns the check, and reports the share it caught.
 
 ## Limits
 
 - Each subject needs at least two samples. A sample whose subject has no other samples cannot be checked.
-- Detection power depends on the body site and the study. It is high for gut, lower for sites that vary a lot within a person.
+- Detection power depends on the body site and the study. In the [SwapSeq Atlas](https://github.com/bymankirat/swapseq) of 30 public tables it was high for adult stool, forehead skin and vaginal swabs, and very low for infant stool, patients on heavy antibiotics, lab mice from one donor and genus-level tables.
 - A flag is evidence, not proof. Check flagged samples against lab records before you relabel or drop anything.
 - This is version 0.1.0, an early release. Please report problems at <https://github.com/bymankirat/swapseqr/issues>.
 
