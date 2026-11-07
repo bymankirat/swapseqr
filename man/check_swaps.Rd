@@ -10,7 +10,9 @@ check_swaps(
   prior = 0.01,
   well = NULL,
   plate = NULL,
-  household = NULL
+  household = NULL,
+  type = c("counts", "markers"),
+  host = NULL
 )
 }
 \arguments{
@@ -22,11 +24,26 @@ For a matrix: a vector with one subject ID per sample.}
 \item{prior}{Expected share of mislabelled samples (default 0.01 = 1\%).}
 
 \item{well, plate, household}{Optional: column names (phyloseq) or vectors (matrix).}
+
+\item{type}{\code{"counts"} (default) for taxa, ASV or OTU counts. \code{"markers"} for
+strain-level tables from shotgun data (strain markers, genes or SNVs, for
+example MetaPhlAn marker presence): any value above 0 means present, and
+samples are compared on the rare markers they share.}
+
+\item{host}{Optional host-DNA read counts from shotgun data, as a data frame
+with columns \code{sample}, \code{site}, \code{alt} and \code{total} (reads showing the
+alternative allele and all reads at a common human SNP). Samples are then
+also matched to people by their own DNA, which works where microbes change
+too fast to identify anyone (newborns, antibiotics). Samples need at least
+2,000 covered SNP sites; in simulations this caught 95\% of swaps, and all of
+them from 2,500 sites. Human genetic data: keep it on your own
+computer and follow your ethics approval.}
 }
 \value{
 A data frame with one row per sample. Measured power (share of test
 swaps and relabels hidden in copies of your labels that were caught) is in
-\code{attr(result, "power")}.
+\code{attr(result, "power")}. With \code{host}, the columns \code{host_verdict},
+\code{host_looks_like} and \code{flagged_by_host} show what the host DNA says.
 }
 \description{
 Runs SwapSeq on a microbiome count table and reports, for every sample,

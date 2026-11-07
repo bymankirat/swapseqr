@@ -18,3 +18,19 @@ make_study <- function(seed = 1, n_subjects = 30, per = 5, own = 30, shared = 50
   subject <- paste0("P", rep(seq_len(n_subjects), each = per))
   list(counts = counts, subject = subject, per = per)
 }
+
+# Host DNA reads for a toy study: every person gets genotypes at common SNPs,
+# every sample gets one read at `sites` random SNPs (very low coverage, as in stool).
+make_host <- function(sample_ids, person, seed = 2, panel = 200000, sites = 2500) {
+  set.seed(seed)
+  af <- runif(panel, 0.05, 0.5)
+  people <- unique(person)
+  geno <- lapply(people, function(p) rbinom(panel, 2, af))
+  names(geno) <- people
+  do.call(rbind, lapply(seq_along(sample_ids), function(j) {
+    k <- sample.int(panel, sites)
+    g <- geno[[person[j]]][k]
+    alt <- ifelse(g == 2, 1L, ifelse(g == 0, 0L, rbinom(sites, 1, 0.5)))
+    data.frame(sample = sample_ids[j], site = paste0("rs", k), alt = alt, total = 1L)
+  }))
+}

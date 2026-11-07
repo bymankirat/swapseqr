@@ -70,3 +70,33 @@ test_that("power is measured on hidden test errors", {
   # a toy study with strong individual signal: most hidden swaps are caught
   expect_gt(pw$swapWithCheck, 0.7)
 })
+
+test_that("markers mode finds a planted swap in a presence table", {
+  st <- make_study(own = 100)
+  pres <- (st$counts > 0) * 1L
+  subject <- st$subject
+  subject[c(1, st$per + 1)] <- subject[c(st$per + 1, 1)]
+  res <- suppressMessages(check_swaps(pres, subject, type = "markers"))
+  expect_setequal(as.character(res$sample[res$level == "flag"]), c("P1_1", "P2_1"))
+})
+
+test_that("host DNA catches a swap that the microbes cannot see", {
+  st <- make_study(n_subjects = 12, per = 5)
+  # no personal microbes at all: everyone looks alike, as in newborns
+  flat <- st$counts
+  flat[51:nrow(flat), ] <- 0
+  host <- make_host(colnames(flat), st$subject, sites = 4000)
+  subject <- st$subject
+  subject[c(1, st$per + 1)] <- subject[c(st$per + 1, 1)]
+  res <- suppressMessages(check_swaps(flat, subject, host = host))
+  expect_true(isTRUE(attr(res, "host")$ok))
+  expect_setequal(as.character(res$sample[res$flagged_by_host]), c("P1_1", "P2_1"))
+  expect_equal(res$host_looks_like[res$sample == "P1_1"], "P1")
+  expect_equal(sum(res$level == "flag" & !res$sample %in% c("P1_1", "P2_1")), 0)
+})
+
+test_that("host input is checked", {
+  st <- make_study()
+  expect_error(check_swaps(st$counts, st$subject, host = data.frame(sample = "x")),
+               "sample, site, alt and total")
+})

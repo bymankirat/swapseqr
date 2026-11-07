@@ -1,3 +1,17 @@
+# swapseqr 0.3.0
+
+* `type = "markers"`: strain-level fingerprints for shotgun data. Give a
+  presence table of strain markers, genes or SNVs (for example MetaPhlAn
+  marker presence) and samples are compared on the rare markers they share.
+* `host`: optional host-DNA read counts at common human SNPs (columns
+  `sample`, `site`, `alt`, `total`). Each sample's reads are scored against
+  every person's pooled reads, so samples can be matched to people by their own
+  DNA where microbes change too fast to identify anyone (newborns, antibiotics).
+  New columns `host_verdict`, `host_looks_like`, `host_llr`, `host_sites` and
+  `flagged_by_host`. Tested on simulated genotypes only so far: samples need at least
+  2,000 covered SNP sites, where it caught 95% of swaps (all of them from 2,500).
+* Counts mode gives exactly the same results as 0.2.1 (SwapSeq engine 1.2.0).
+
 # swapseqr 0.2.1
 
 * SwapSeq 1.1.1 engine: measured power no longer reads low when a table

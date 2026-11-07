@@ -43,6 +43,28 @@ Optional extras:
 - `well`, `plate`: plate positions, used to detect sample-sheet shifts
 - `household`: household IDs, so that people who live together are not over-flagged
 
+### Shotgun data (0.3.0)
+
+Strain-level fingerprints from a marker or gene presence table (for example MetaPhlAn marker presence),
+features in rows and samples in columns:
+
+```r
+res <- check_swaps(markers, subject = meta$subject_id, type = "markers")
+```
+
+Host DNA: shotgun reads carry some of the person's own DNA, which identifies them even when their microbes
+change too fast (newborns, antibiotics). Give read counts at common human SNPs as a data frame with columns
+`sample`, `site`, `alt` and `total`:
+
+```r
+res <- check_swaps(ps, subject = "subject_id", host = host_counts)
+res[res$flagged_by_host, ]
+```
+
+The host-DNA check is tested in simulation only so far and needs at least 2,000 covered SNP sites per sample.
+How to make `host_counts`, and the privacy rules for human genetic data:
+<https://github.com/bymankirat/swapseq/blob/main/docs/host-dna.md>.
+
 ## Output
 
 You get one row per sample:
@@ -63,11 +85,11 @@ You get one row per sample:
 - Each subject needs at least two samples. A sample whose subject has no other samples cannot be checked.
 - Detection power depends on the body site and the study. In the [SwapSeq Atlas](https://bymankirat.github.io/swapseq/atlas/) of 30 public tables it was high for adult stool, forehead skin and vaginal swabs, and very low for infant stool, patients on heavy antibiotics, lab mice from one donor and genus-level tables.
 - A flag is evidence, not proof. Check flagged samples against lab records before you relabel or drop anything.
-- This is version 0.2.1 (SwapSeq engine 1.1.1, method v3). Please report problems at <https://github.com/bymankirat/swapseqr/issues>.
+- This is version 0.3.0 (SwapSeq engine 1.2.0, method v3). Please report problems at <https://github.com/bymankirat/swapseqr/issues>.
 
 ## Cite
 
-Singh M. (2026). *SwapSeq: a sample mix-up checker for longitudinal microbiome studies* (v1.1.1). Zenodo. <https://doi.org/10.5281/zenodo.23963612> (RRID:SCR_029248)
+Singh M. (2026). *SwapSeq: a sample mix-up checker for longitudinal microbiome studies* (v1.2.0). Zenodo. <https://doi.org/10.5281/zenodo.23963612> (RRID:SCR_029248)
 
 ## Author
 
