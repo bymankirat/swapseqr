@@ -61,13 +61,13 @@ You get one row per sample:
 ## Limits
 
 - Each subject needs at least two samples. A sample whose subject has no other samples cannot be checked.
-- Detection power depends on the body site and the study. In the [SwapSeq Atlas](https://github.com/bymankirat/swapseq) of 30 public tables it was high for adult stool, forehead skin and vaginal swabs, and very low for infant stool, patients on heavy antibiotics, lab mice from one donor and genus-level tables.
+- Detection power depends on the body site and the study. In the [SwapSeq Atlas](https://bymankirat.github.io/swapseq/atlas/) of 30 public tables it was high for adult stool, forehead skin and vaginal swabs, and very low for infant stool, patients on heavy antibiotics, lab mice from one donor and genus-level tables.
 - A flag is evidence, not proof. Check flagged samples against lab records before you relabel or drop anything.
-- This is version 0.1.0, an early release. Please report problems at <https://github.com/bymankirat/swapseqr/issues>.
+- This is version 0.2.1 (SwapSeq engine 1.1.1, method v3). Please report problems at <https://github.com/bymankirat/swapseqr/issues>.
 
 ## Cite
 
-Singh M. SwapSeq: detecting sample swaps in longitudinal microbiome studies. Zenodo. <https://doi.org/10.5281/zenodo.23963612> (RRID:SCR_029248)
+Singh M. (2026). *SwapSeq: a sample mix-up checker for longitudinal microbiome studies* (v1.1.1). Zenodo. <https://doi.org/10.5281/zenodo.23963612> (RRID:SCR_029248)
 
 ## Author
 
