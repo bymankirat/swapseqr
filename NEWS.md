@@ -1,3 +1,9 @@
+# swapseqr 0.2.1
+
+* SwapSeq 1.1.1 engine: measured power no longer reads low when a table
+  already holds errors (near-certain flags are set aside before the hidden
+  tests). Flags and probabilities are unchanged.
+
 # swapseqr 0.2.0
 
 * Uses the SwapSeq 1.1.0 engine. The power figures in `attr(result, "power")`

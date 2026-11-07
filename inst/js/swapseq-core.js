@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SwapSeq core (v1.1.0, method v3) bundled for the R package. Generated from core.mjs; do not edit by hand.
+// SwapSeq core (v1.1.1, method v3) bundled for the R package. Generated from core.mjs; do not edit by hand.
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Mankirat Singh
 // SwapSeq core: finds microbiome samples whose community does not match the person they are labelled as.
@@ -242,6 +242,17 @@ function analyse(data,lab,opt={},M=null){
 // answer is repeatable. Replaces the v1.0 estimate read off the planted-score calibration, which on
 // clean tables could show near 0% while the real catch rate was over 80% (SwapSeq Atlas, Nov 2026).
 function measurePower(data,lab,res,M,opt={}){
+  // Near-certain flags (P >= 0.9) are set aside first: they are almost surely the table's own errors,
+  // and leaving them in makes every hidden test compete with them, so power reads low in tables that
+  // hold errors. Borderline flags and the check list stay: many are natural look-alikes and part of
+  // the table's normal variation, and removing them would make a weak table look stronger than it is.
+  const away=opt.setAside===false?[]:res.rows.filter(r=>r.level==='flag'&&r.prob>=.9).map(r=>r.i);
+  if(away.length&&!opt._reduced){const drop=new Set(away),keep=[];for(let i=0;i<data.samples.length;i++)if(!drop.has(i))keep.push(i);
+    const m=keep.length,N=data.samples.length,sub=D=>{const X=new Float32Array(m*m);for(let a=0;a<m;a++){const ra=keep[a]*N;for(let b=0;b<m;b++)X[a*m+b]=D[ra+keep[b]]}return X};
+    const J=sub(M.J),A=M.A===M.J?J:sub(M.A),M2={J,A,aitFeat:M.aitFeat,masked:M.masked};
+    const data2={feats:data.feats,samples:keep.map(i=>data.samples[i])},lab2=keep.map(i=>lab[i]);
+    const keptRows=keep.map((i,k)=>({i:k,level:res.rows[i].level}));
+    return measurePower(data2,lab2,{rows:keptRows,prior:res.prior,nScorable:res.nScorable},M2,{...opt,_reduced:true,visit:opt.visit?keep.map(i=>opt.visit[i]):undefined})}
   const n=data.samples.length,ok=scorable(lab),reps=opt.reps??(n<300?40:n<1500?20:6);
   const base=new Set(res.rows.filter(r=>r.level!=='ok').map(r=>r.i));
   const cnt=new Map();lab.forEach(l=>cnt.set(l,(cnt.get(l)||0)+1));
