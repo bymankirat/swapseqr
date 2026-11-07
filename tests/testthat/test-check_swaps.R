@@ -68,5 +68,5 @@ test_that("power is measured on hidden test errors", {
   expect_true(isTRUE(pw$measured))
   expect_gt(pw$tests$swapped, 0)
   # a toy study with strong individual signal: most hidden swaps are caught
-  expect_gt(pw$swap, 0.7)
+  expect_gt(pw$swapWithCheck, 0.7)
 })
