@@ -373,29 +373,70 @@ function markerDistances(data,opt={}){
 // Input G: one entry per sample (table order), a Map site -> [altReads, totalReads] (or a number in [0,1],
 // read as one read). Population allele frequencies are estimated from all samples unless opt.af is given.
 function hostCheck(G,lab,opt={}){
-  const n=lab.length,e=opt.errorRate??0.01,minSites=opt.minSites??2000;
+  // v2 (stress-tested): every person is judged against two levels read off the data itself, so the call
+  // does not depend on how many reads a sample or a person happens to have:
+  //   s(i,S) = mean over informative sites of [log-lik of i's read given S's pooled reads - log-lik given the
+  //            population frequency]; informative = S has pooled reads at that site (leave-one-out for S = own).
+  //   same level   = median of s over each sample's own label (most labels are right)
+  //   unrelated level = median of s over all other people
+  // Each s has a standard error from its own sites. A sample is called "other person" only when its own label
+  // is clearly not the same person (likelihood ratio e^3 against a relative or a stranger), another person clearly
+  // is (e^3 the other way), and that person explains the reads e^8 times better. When both the label and
+  // another person match (identical twins, or one person entered under two IDs), it says so instead of flagging.
+  const n=lab.length,e=opt.errorRate??0.01,minSites=opt.minSites??1500,A=opt.selfLR??3,minInf=opt.minInformative??30;
   const rd=v=>Array.isArray(v)?[+v[0],+v[1]]:[Number(v)>=.5?1:0,1];
   const people=[...new Set(lab)],pid=new Map(people.map((p,k)=>[p,k]));
-  const pool=people.map(()=>new Map()),glob=new Map();
+  const glob=new Map();let pool;
   const reads=G.map(g=>{const o=[];if(g)for(const [k,v] of g){const [a,t]=rd(v);if(t>0)o.push([+k,a,t])}return o});
-  reads.forEach((r,i)=>{const P=pool[pid.get(lab[i])];for(const [k,a,t] of r){const c=P.get(k)||[0,0];c[0]+=a;c[1]+=t;P.set(k,c);const g=glob.get(k)||[0,0];g[0]+=a;g[1]+=t;glob.set(k,g)}});
+  reads.forEach(r=>{for(const [k,a,t] of r){const g=glob.get(k)||[0,0];g[0]+=a;g[1]+=t;glob.set(k,g)}});
+  const buildPools=skip=>{pool=people.map(()=>new Map());reads.forEach((r,i)=>{if(skip.has(i))return;const P=pool[pid.get(lab[i])];for(const [k,a,t] of r){const c=P.get(k)||[0,0];c[0]+=a;c[1]+=t;P.set(k,c)}})};
   const afOf=k=>{if(opt.af&&opt.af.has(k))return Math.min(.99,Math.max(.01,opt.af.get(k)));const g=glob.get(k);return g?Math.min(.95,Math.max(.05,(g[0]+1)/(g[1]+2))):.5};
-  // predictive probability that a read from person S at site k shows the alt allele, given S's pooled reads (A of T)
   const pred=(k,A,T)=>{const f=afOf(k),pr=[(1-f)*(1-f),2*f*(1-f),f*f],q=[e,.5,1-e];let z=0,num=0;
     for(let g=0;g<3;g++){const w=pr[g]*Math.pow(q[g],A)*Math.pow(1-q[g],T-A);z+=w;num+=w*q[g]}return z>0?num/z:f};
-  const rows=[];let used=0;
-  for(let i=0;i<n;i++){const r=reads[i];if(r.length<minSites){rows.push({i,verdict:'unknown',sites:r.length});continue}used++;
-    const own=pid.get(lab[i]),LL=new Float64Array(people.length);
-    for(let S=0;S<people.length;S++){const P=pool[S];let ll=0;
-      for(const [k,a,t] of r){let A=0,T=0;const c=P.get(k);if(c){A=c[0];T=c[1];if(S===own){A-=a;T-=t}}const q=pred(k,A,T);ll+=a*Math.log(q)+(t-a)*Math.log(1-q)}
-      LL[S]=ll}
-    // only people with host reads of their own can be told apart from the population prior
-    let best=-Infinity,bS=-1;for(let S=0;S<people.length;S++){if(S===own)continue;if(LL[S]>best){best=LL[S];bS=S}}
-    const llr=best-LL[own];  // > 0: another person's DNA explains the reads better than the labelled person's
-    const verdict=llr>=(opt.cut??8)?'other person':llr<=-(opt.cut??8)?'same person':'unclear';
-    rows.push({i,verdict,llr,looksLike:bS>=0?people[bS]:null,sites:r.length})}
-  if(!used)return {ok:false,reason:'no sample has enough host reads',rows};
-  return {ok:true,rows,minSites,used};
+  const ll=(a,t,q)=>a*Math.log(q)+(t-a)*Math.log(1-q);
+  // per sample and person: mean and s.e. of the per-site gain over the population prior, plus the total (for the likelihood ratio)
+  const S=new Array(n);let used=0;
+  const score=skip=>{buildPools(skip);used=0;
+  for(let i=0;i<n;i++){const r=reads[i];if(r.length<minSites){S[i]=null;continue}used++;
+    const own=pid.get(lab[i]),stats=[];
+    for(let p=0;p<people.length;p++){const P=pool[p];let m=0,sum=0,sq=0;
+      for(const [k,a,t] of r){const c=P.get(k);if(!c)continue;let A=c[0],T=c[1];if(p===own&&!SKIP.has(i)){A-=a;T-=t}if(T<=0)continue;
+        const d=ll(a,t,pred(k,A,T))-ll(a,t,afOf(k));m++;sum+=d;sq+=d*d}
+      const mean=m?sum/m:0,sd=m>1?Math.sqrt(Math.max(1e-9,(sq-m*mean*mean)/(m-1))):1;
+      stats.push({p,m,mean,se:m?sd/Math.sqrt(m):Infinity,total:sum})}
+    S[i]={own,stats}}};
+  // pass 1 with every sample pooled; pass 2 leaves out of the pools the samples pass 1 found clearly not to be
+  // their labelled person, so a swapped-in sample no longer blurs the genotypes of the person it was put under
+  let SKIP=new Set();score(SKIP);
+  if(!used)return {ok:false,reason:'no sample has enough host reads',rows:G.map((_,i)=>({i,verdict:'unknown',sites:reads[i].length}))};
+  const judge=()=>{
+  const med=x=>{const y=x.filter(Number.isFinite).sort((a,b)=>a-b);return y.length?y[y.length>>1]:NaN};
+  const ownS=[],othS=[];for(const x of S){if(!x)continue;for(const st of x.stats){if(st.m<minInf)continue;(st.p===x.own?ownS:othS).push(st.mean)}}
+  const same=med(ownS),unrel=med(othS);
+  if(!(same>unrel))return {ok:false,reason:'host reads do not separate people (too few reads shared between samples)',rows:G.map((_,i)=>({i,verdict:'unknown',sites:reads[i].length}))};
+  const rows=[];
+  for(let i=0;i<n;i++){const x=S[i];if(!x){rows.push({i,verdict:'unknown',sites:reads[i].length});continue}
+    // position between the two levels: 0 = a stranger, 1 = the same person; relatives sit near 0.5
+    const ok=st=>st&&st.m>=minInf,span=same-unrel,f=st=>(st.mean-unrel)/span,sf=st=>st.se/span;
+    // three hypotheses for each person: the same person (1), a first-degree relative (0.5) or a stranger (0);
+    // selfLR = log likelihood of "same person" against the better of the other two, from the position and its s.e.
+    const selfLR=st=>{const x=f(st),v=2*sf(st)*sf(st);return (Math.min((x-.5)**2,x*x)-(x-1)**2)/v};
+    const isSame=st=>ok(st)&&selfLR(st)>=A;      // clearly the same person (not a relative, not a stranger)
+    const notSame=st=>ok(st)&&selfLR(st)<=-A;    // clearly not the same person
+    // the person a sample really comes from: clearly not a stranger, and closer to "same" than to "relative"
+    const vsStranger=st=>{const x=f(st);return (x*x-(x-1)**2)/(2*sf(st)*sf(st))};
+    const likelyOwner=st=>ok(st)&&f(st)>=.75&&vsStranger(st)>=A;
+    const o=x.stats.find(st=>st.p===x.own);
+    let best=null;for(const st of x.stats){if(st.p===x.own||!ok(st))continue;if(!best||st.mean>best.mean)best=st}
+    const llr=best&&o?best.total-o.total:NaN;let verdict='unclear',looks=null;
+    if(isSame(o)&&best&&isSame(best)){verdict='identical DNA';looks=people[best.p]}
+    else if((notSame(o)||!ok(o))&&best&&likelyOwner(best)&&llr>=(opt.cut??8)){verdict='other person';looks=people[best.p]}
+    else if(isSame(o))verdict='same person';
+    rows.push({i,verdict,llr,notSame:notSame(o),looksLike:looks??(best?people[best.p]:null),sites:reads[i].length,informative:o?o.m:0,ownPos:ok(o)?f(o):null,ownPosSE:ok(o)?sf(o):null,bestPos:ok(best)?f(best):null,bestPosSE:ok(best)?sf(best):null,all:opt.debug?x.stats.map(st=>({who:people[st.p],f:ok(st)?f(st):null,sf:ok(st)?sf(st):null,m:st.m})):undefined})}
+  return {ok:true,rows,minSites,used,sameLevel:same,unrelatedLevel:unrel}};
+  let out=judge();if(!out.ok||opt.passes===1)return out;
+  SKIP=new Set(out.rows.filter(r=>r.notSame).map(r=>r.i));if(!SKIP.size)return out;
+  score(SKIP);out=judge();out.setAside=SKIP.size;return out;
 }
 
 // Microbes and host DNA are independent witnesses. Host DNA, when it is there, settles identity.

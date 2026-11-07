@@ -17,8 +17,8 @@
 #'   alternative allele and all reads at a common human SNP). Samples are then
 #'   also matched to people by their own DNA, which works where microbes change
 #'   too fast to identify anyone (newborns, antibiotics). Samples need at least
-#'   2,000 covered SNP sites; in simulations this caught 95% of swaps, and all of
-#'   them from 2,500 sites. Human genetic data: keep it on your own
+#'   1,500 covered SNP sites, and it works best with 6 or more samples per
+#'   person; tested on simulated data only. Human genetic data: keep it on your own
 #'   computer and follow your ethics approval.
 #' @return A data frame with one row per sample. Measured power (share of test
 #'   swaps and relabels hidden in copies of your labels that were caught) is in

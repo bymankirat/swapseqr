@@ -8,8 +8,12 @@
   every person's pooled reads, so samples can be matched to people by their own
   DNA where microbes change too fast to identify anyone (newborns, antibiotics).
   New columns `host_verdict`, `host_looks_like`, `host_llr`, `host_sites` and
-  `flagged_by_host`. Tested on simulated genotypes only so far: samples need at least
-  2,000 covered SNP sites, where it caught 95% of swaps (all of them from 2,500).
+  `flagged_by_host`. `host_verdict` is "same person", "other person",
+  "identical DNA" (identical twins, or one person under two IDs), "unclear" or
+  "unknown". Tested on simulated genotypes only so far, including a stress test
+  with relatives, twins, uneven DNA and contamination: almost no false flags;
+  samples need at least 1,500 covered SNP sites, and it works best with 6 or more
+  samples per person.
 * Counts mode gives exactly the same results as 0.2.1 (SwapSeq 1.1.1 engine, November update).
 
 # swapseqr 0.2.1

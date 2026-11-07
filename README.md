@@ -61,7 +61,7 @@ res <- check_swaps(ps, subject = "subject_id", host = host_counts)
 res[res$flagged_by_host, ]
 ```
 
-The host-DNA check is tested in simulation only so far and needs at least 2,000 covered SNP sites per sample.
+The host-DNA check is tested in simulation only so far (including relatives, twins and contamination), needs at least 1,500 covered SNP sites per sample and works best with 6 or more samples per person.
 How to make `host_counts`, and the privacy rules for human genetic data:
 <https://github.com/bymankirat/swapseq/blob/main/docs/host-dna.md>.
 
