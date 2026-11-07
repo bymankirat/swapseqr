@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// SwapSeq core 1.2.0 (method v3) bundled for R and the command line. Generated from core.mjs; do not edit by hand.
+// SwapSeq core 1.1.1 (method v3) bundled for R and the command line. Generated from core.mjs; do not edit by hand.
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Mankirat Singh
 // SwapSeq core: finds microbiome samples whose community does not match the person they are labelled as.
@@ -344,7 +344,7 @@ function pcoa(D,n,iters=50){
   return {x:Float32Array.from(vecs[0],v=>v*Math.sqrt(vals[0])),y:Float32Array.from(vecs[1],v=>v*Math.sqrt(vals[1])),share:vals.map(l=>trace>0?l/trace:0)};
 }
 
-// ===================== SwapSeq 1.2: strain-level fingerprints and host DNA =====================
+// ===================== strain-level fingerprints and host DNA (November 2026 update) =====================
 // ---------- strain-level fingerprints ----------
 // Input: the usual sparse table, where a feature is a strain marker, gene or SNV and any value > 0 means present.
 // Only informative markers are used: present in at least 2 samples and in at most half of them (markers that
@@ -434,5 +434,5 @@ function swapseq_run(json){
     host_verdict:r.host?r.host.verdict:null,host_looks_like:r.host&&r.host.looksLike!=null?String(r.host.looksLike):null,host_llr:r.host?num(r.host.llr):null,host_sites:r.host?num(r.host.sites):null,
     flagged_by_host:!!r.byHost}));
   return JSON.stringify({rows,shifts:res.shifts||[],power:res.power,n_subjects:res.nSubjects,n_scorable:res.nScorable,threshold:num(res.threshold),prior:input.prior==null?0.01:+input.prior,
-    type,markers:type==='markers'?M.markers:null,host:host?{ok:host.ok,reason:host.reason||null,samples_with_host_dna:host.used||0}:null,version:'1.2.0'});
+    type,markers:type==='markers'?M.markers:null,host:host?{ok:host.ok,reason:host.reason||null,samples_with_host_dna:host.used||0}:null,version:'1.1.1'});
 }
