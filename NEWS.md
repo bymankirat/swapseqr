@@ -1,3 +1,18 @@
+# swapseqr 0.3.1
+
+* Several errors in one table: swap pairs where both samples point at each
+  other's person are now strong flags when planted swaps stand out well in the
+  table (`attr(result, "separation")` 0.7 or more). With 3% of samples swapped
+  in 7 public shotgun tables, strong flags caught 41% of hidden swaps instead of
+  5% (other samples flagged: 2.8 per 1,000 instead of 0.1). A message suggests
+  `prior = 0.02` or `0.05` when a table has more swap pairs than the prior
+  explains; at 3% that caught about 80%.
+* Duplicate check: two samples labelled as different people whose communities
+  are near-identical (one tube, extract or file under two names) are listed in
+  `attr(result, "duplicates")`. With planted technical duplicates in 15 public
+  shotgun tables: 97% found in cross-sectional tables, 63% in longitudinal ones,
+  no unplanted pair reported.
+
 # swapseqr 0.3.0
 
 * `type = "markers"`: strain-level fingerprints for shotgun data. Give a
@@ -14,7 +29,7 @@
   with relatives, twins, uneven DNA and contamination: almost no false flags;
   samples need at least 1,500 covered SNP sites, and it works best with 6 or more
   samples per person.
-* Counts mode gives exactly the same results as 0.2.1 (SwapSeq 1.1.1 engine, November update).
+* Counts mode gives the same results as 0.2.1 (SwapSeq 1.1.1 engine, November update).
 
 # swapseqr 0.2.1
 

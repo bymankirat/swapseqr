@@ -230,7 +230,12 @@ function analyse(data,lab,opt={},M=null){
   const inPair=new Set(pairs.flatMap(p=>[p.a,p.b]));for(const r of rows)r.kind=r.level==='ok'?'ok':inPair.has(r.id)?'swap':'mismatch';
   const frac=(x,f)=>x.length?x.filter(f).length/x.length:NaN;
   const power={single:frac(pl.single,v=>Ps(v)>=thr),swap:frac(pl.pair,v=>Pp(v)>=thr),singleWithCheck:frac(pl.single,v=>Ps(v)>=.2||Bs(v)>=thr),swapWithCheck:frac(pl.pair,v=>Pp(v)>=.2||Bp(v)>=thr)};
-  return {rows,pairs,power,prior,errorRate:{single:Ps.pi,swap:Pp.pi},threshold:thr,aitFeat:M.aitFeat,nSubjects:new Set(lab).size,nScorable:rows.filter(r=>r.scorable).length,planted:pl};
+  // how well planted swaps stand out from this table's own samples: share of planted swap scores above the 95th
+  // percentile of all observed pair scores. Most samples are correct even when a few percent are not, so this
+  // stays stable when the table already holds several errors (the measured power does not).
+  const obsP=Array.from(pr.s).filter(Number.isFinite).sort((x,y)=>x-y),plP=pl.pair.filter(Number.isFinite);
+  const separation=obsP.length&&plP.length?plP.filter(v=>v>obsP[Math.floor(.95*(obsP.length-1))]).length/plP.length:NaN;
+  return {rows,pairs,power,prior,separation,errorRate:{single:Ps.pi,swap:Pp.pi},threshold:thr,aitFeat:M.aitFeat,nSubjects:new Set(lab).size,nScorable:rows.filter(r=>r.scorable).length,planted:pl};
 }
 
 // ---------- measured power (v1.1) ----------
@@ -259,7 +264,7 @@ function measurePower(data,lab,res,M,opt={}){
   const idx=[];for(let i=0;i<n;i++)if(ok[i]&&!base.has(i)&&cnt.get(lab[i])>=3)idx.push(i);
   const k=Math.max(1,Math.round(n*.002));
   if(idx.length<8*k||new Set(idx.map(i=>lab[i])).size<3)return null;
-  let s=0,s2=0,sN=0,o=0,o2=0,oN=0,fp=0,fpN=0;
+  let s=0,s2=0,s3=0,sN=0,o=0,o2=0,oN=0,fp=0,fpN=0;
   for(let rep=0;rep<reps;rep++){
     if(opt.progress)opt.progress(`Measuring power: hidden test ${rep+1} of ${reps}`);
     const R=rng(9001+rep*7919),L=lab.slice(),used=new Set(),swaps=[],ones=[],doSwap=rep%2===0;
@@ -268,12 +273,65 @@ function measurePower(data,lab,res,M,opt={}){
     if(doSwap)while(swaps.length<k&&guard++<10000){const a=pick(),b=pick();if(a<0||b<0||a===b||L[a]===L[b])continue;[L[a],L[b]]=[L[b],L[a]];used.add(a);used.add(b);swaps.push([a,b])}
     else while(ones.length<k&&guard++<10000){const a=pick(),b=pick();if(a<0||b<0||a===b||L[a]===L[b])continue;L[a]=L[b];used.add(a);used.add(b);ones.push(a)}
     const r=analyse(data,L,{prior:res.prior,seed:rep+3,visit:opt.visit},M);
-    for(const [a,b] of swaps)for(const x of [a,b]){sN++;if(r.rows[x].flag)s++;if(r.rows[x].level!=='ok')s2++}
+    const up=new Set();if(r.separation>=0.7)for(const p of r.pairs)if(p.level==='check'){up.add(p.a);up.add(p.b)}
+    for(const [a,b] of swaps)for(const x of [a,b]){sN++;if(r.rows[x].flag)s++;if(r.rows[x].flag||up.has(r.rows[x].id))s3++;if(r.rows[x].level!=='ok')s2++}
     for(const a of ones){oN++;if(r.rows[a].flag)o++;if(r.rows[a].level!=='ok')o2++}
     const planted=new Set(swaps.flat().concat(ones));
     for(let i=0;i<n;i++){if(planted.has(i)||base.has(i)||!r.rows[i].scorable)continue;fpN++;if(r.rows[i].flag)fp++}}
   if(!sN)return null;
-  return {single:oN?o/oN:NaN,swap:s/sN,singleWithCheck:oN?o2/oN:NaN,swapWithCheck:s2/sN,falseFlagsPer1000:fpN?1000*fp/fpN:NaN,reps,tests:{swapped:sN,relabelled:oN},measured:true};
+  return {single:oN?o/oN:NaN,swap:s/sN,swapPairsPromoted:s3/sN,singleWithCheck:oN?o2/oN:NaN,swapWithCheck:s2/sN,falseFlagsPer1000:fpN?1000*fp/fpN:NaN,reps,tests:{swapped:sN,relabelled:oN},measured:true};
+}
+
+// ---------- reciprocal pairs (November 2026) ----------
+// A swap leaves two samples that each fit the other's person. When both sit on the check list and point at each
+// other, that pattern is much rarer by chance than either sample alone, so in tables where planted swaps stand
+// out well (separation >= 0.7) such pairs are promoted to strong flags. This matters most when a table holds
+// several errors at once: the calibration assumes about 1% errors, and with 3% swapped samples strong flags alone
+// caught few. Tested on 29 public tables, see validation section 11. In tables where swaps do not stand out it
+// added false flags, so it is not applied there. When power was measured, the reported swap rate includes it.
+function promotePairs(res,power,opt={}){
+  if(!(res.separation>=(opt.minSeparation??0.7)))return res;
+  const byId=new Map(res.rows.map(r=>[r.id,r]));let n=0;
+  for(const p of res.pairs){if(p.level!=='check')continue;
+    for(const id of [p.a,p.b]){const r=byId.get(id);if(r&&!r.flag){r.flag=true;r.check=false;r.level='flag';r.kind='swap';r.byPair=true;n++}}
+    p.level='flag';p.promoted=true}
+  if(power&&Number.isFinite(power.swapPairsPromoted)){power.swapBeforePromotion=power.swap;power.swap=Math.max(power.swap,power.swapPairsPromoted)}
+  res.promoted=n;return res;
+}
+
+// ---------- duplicate check (November 2026) ----------
+// Duplicate check: two samples labelled as different people whose communities are near-identical.
+// That happens when one tube is sequenced twice under two names, a DNA extract is reused, or a file is
+// uploaded twice; biological samples from two people are almost never that close. Works with one sample per
+// person (cross-sectional studies) as well as with repeat samples.
+//
+// For every sample, its nearest neighbour among OTHER people's samples (soft Jaccard and Aitchison). A pair is a
+// candidate when the two are each other's nearest neighbour and, on both distances, closer than almost any other
+// pair of samples from different people: log distance below median - k * MAD (k = 5) of all samples'
+// nearest-other-person log distances. With repeat samples, the pair must also be closer than 0.7 times the distance
+// from either sample to its own person's nearest other sample. Tested on the 15 shotgun tables of Ye et al. (2026)
+// with planted technical duplicates (abundances jittered, rare taxa dropped): 97% found in cross-sectional tables,
+// 64% in longitudinal ones, and no pair reported that was not planted. In repeat-sample studies a sample put under
+// the wrong person can also show up as a near-identical pair (7 of 105 planted mislabels), which is why the
+// message names both causes.
+function findDuplicates(M,lab,opt={},ids=null){
+  const n=lab.length,k=opt.k??5,Ds=M.A&&M.A!==M.J?[M.J,M.A]:[M.J];
+  const med=a=>{const s=Float64Array.from(a).sort();return s.length?s[s.length>>1]:NaN};
+  const lim=[],nn=[],own=[],mode=opt.same??'pair',f=opt.f??0.7;
+  for(const D of Ds){const best=new Float64Array(n).fill(Infinity),who=new Int32Array(n).fill(-1);
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){if(j===i||lab[j]===lab[i])continue;const d=D[i*n+j];if(d<best[i]){best[i]=d;who[i]=j}}
+    const L=Array.from(best).filter(v=>isFinite(v)&&v>0).map(Math.log),m=med(L),mad=1.4826*med(L.map(v=>Math.abs(v-m)));
+    let same=Infinity;
+    const sp=[],ow=new Float64Array(n).fill(Infinity);for(let i=0;i<n;i++){let b=Infinity;for(let j=0;j<n;j++){if(j!==i&&lab[j]===lab[i]){const d=D[i*n+j];if(d<b)b=d}}ow[i]=b;if(isFinite(b))sp.push(b)}
+    if(mode==='global'&&sp.length>=10){const s=Float64Array.from(sp).sort();same=s[Math.floor(.05*(s.length-1))]}
+    lim.push(Math.min(Math.exp(m-k*mad),same));nn.push(who);own.push(ow)}
+  const pairs=[],seen=new Set();
+  for(let i=0;i<n;i++){const j=nn[0][i];if(j<0||nn[0][j]!==i)continue;            // mutual nearest neighbours on the fingerprint distance
+    if(!Ds.every((D,q)=>D[i*n+j]<=lim[q]))continue;
+    if(mode==='pair'&&!Ds.every((D,q)=>D[i*n+j]<f*Math.min(own[q][i],own[q][j])))continue; // closer than either sample is to its own person's other samples
+    const key=i<j?i+'|'+j:j+'|'+i;if(seen.has(key))continue;seen.add(key);
+    const a=Math.min(i,j),b=Math.max(i,j);pairs.push({a,b,idA:ids?ids[a]:a,idB:ids?ids[b]:b,subjectA:lab[a],subjectB:lab[b],distance:Ds.map(D=>D[i*n+j]),limit:lim.slice()})}
+  return {pairs,limits:lim};
 }
 
 // ---------- explaining flags ----------
@@ -462,6 +520,8 @@ function swapseq_run(json){
   let res=annotate(data,lab,analyse(data,lab,{prior:input.prior==null?0.01:+input.prior},M),{house:input.house||null,well:input.well||null,plate:input.plate||null});
   const mp=measurePower(data,lab,res,M); // v1.1: power measured on errors hidden in copies of the labels
   res.power=mp||{single:null,swap:null,singleWithCheck:null,swapWithCheck:null,measured:false};
+  promotePairs(res,mp);
+  const dup=findDuplicates(M,lab,{},data.samples.map(s=>s.id)).pairs; // two people's labels, one near-identical community
   let host=null;
   if(input.host){const G=input.host.map(h=>h?new Map(Object.entries(h).map(([k,v])=>[k,v])):null);
     // sites may be any string id; map them to integers once
@@ -474,6 +534,6 @@ function swapseq_run(json){
     well:r.well==null?null:String(r.well),in_shift:!!r.shift,
     host_verdict:r.host?r.host.verdict:null,host_looks_like:r.host&&r.host.looksLike!=null?String(r.host.looksLike):null,host_llr:r.host?num(r.host.llr):null,host_sites:r.host?num(r.host.sites):null,
     flagged_by_host:!!r.byHost}));
-  return JSON.stringify({rows,shifts:res.shifts||[],power:res.power,n_subjects:res.nSubjects,n_scorable:res.nScorable,threshold:num(res.threshold),prior:input.prior==null?0.01:+input.prior,
+  return JSON.stringify({rows,shifts:res.shifts||[],duplicates:dup.map(p=>({sample_a:String(p.idA),subject_a:String(p.subjectA),sample_b:String(p.idB),subject_b:String(p.subjectB),distance:num(p.distance[0])})),power:res.power,n_subjects:res.nSubjects,separation:num(res.separation),promoted_pairs:res.promoted||0,swap_pairs:res.pairs.length,many_errors:res.nScorable>0&&2*res.pairs.length/res.nScorable>=1.5*(input.prior==null?0.01:+input.prior),n_scorable:res.nScorable,threshold:num(res.threshold),prior:input.prior==null?0.01:+input.prior,
     type,markers:type==='markers'?M.markers:null,host:host?{ok:host.ok,reason:host.reason||null,samples_with_host_dna:host.used||0}:null,version:'1.1.1'});
 }

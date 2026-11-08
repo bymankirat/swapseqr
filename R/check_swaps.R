@@ -24,6 +24,11 @@
 #'   swaps and relabels hidden in copies of your labels that were caught) is in
 #'   `attr(result, "power")`. With `host`, the columns `host_verdict`,
 #'   `host_looks_like` and `flagged_by_host` show what the host DNA says.
+#'   Possible duplicates (two samples labelled as different people whose
+#'   communities are near-identical: one tube, extract or file under two names)
+#'   are in `attr(result, "duplicates")`. Swap pairs where both samples point at
+#'   each other's person are strong flags when the table separates planted swaps
+#'   well (`attr(result, "separation")` of 0.7 or more).
 #' @importFrom methods as
 #' @export
 check_swaps <- function(x, subject, prior = 0.01,
@@ -81,9 +86,19 @@ check_swaps <- function(x, subject, prior = 0.01,
   attr(res, "shifts") <- out$shifts
   swap_power <- if (is.null(out$power$swap)) NA_real_ else out$power$swap
   attr(res, "host") <- out$host
+  dups <- out$duplicates
+  if (length(dups) == 0) dups <- data.frame(sample_a = character(), subject_a = character(),
+                                            sample_b = character(), subject_b = character(),
+                                            distance = numeric())
+  attr(res, "duplicates") <- dups
+  attr(res, "separation") <- out$separation
   message(sprintf("SwapSeq: %d strong flags, %d on the check list, out of %d samples. Measured power to catch swaps: %.0f%%.",
                   sum(res$level == "flag"), sum(res$level == "check"), nrow(res),
                   100 * swap_power))
+  if (nrow(dups) > 0)
+    message(sprintf("Possible duplicates: %d pair(s) of samples labelled as different people are near-identical; see attr(result, \"duplicates\").", nrow(dups)))
+  if (isTRUE(out$many_errors))
+    message(sprintf("Note: more swap pairs than a %g%% error rate explains. Try prior = 0.02 or 0.05.", 100 * prior))
   if (!is.null(out$host)) {
     if (isTRUE(out$host$ok)) {
       message(sprintf("Host DNA: %d samples with enough host reads; %d flagged by host DNA.",

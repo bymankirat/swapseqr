@@ -100,3 +100,18 @@ test_that("host input is checked", {
   expect_error(check_swaps(st$counts, st$subject, host = data.frame(sample = "x")),
                "sample, site, alt and total")
 })
+
+test_that("a near-identical sample under another person is reported as a possible duplicate", {
+  st <- make_study()
+  x <- st$counts
+  src <- which(colnames(x) == "P6_2")
+  dst <- which(colnames(x) == "P5_3")
+  set.seed(9)
+  x[, dst] <- ifelse(x[, src] > 0, pmax(1L, round(x[, src] * runif(nrow(x), 0.85, 1.15))), 0L)
+  res <- suppressMessages(check_swaps(x, st$subject))
+  d <- attr(res, "duplicates")
+  expect_equal(nrow(d), 1)
+  expect_setequal(c(d$sample_a, d$sample_b), c("P5_3", "P6_2"))
+  clean <- suppressMessages(check_swaps(st$counts, st$subject))
+  expect_equal(nrow(attr(clean, "duplicates")), 0)
+})
