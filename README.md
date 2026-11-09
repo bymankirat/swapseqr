@@ -83,7 +83,7 @@ You get one row per sample:
 ## Limits
 
 - Each subject needs at least two samples. A sample whose subject has no other samples cannot be checked.
-- Detection power depends on the body site and the study. In the [SwapSeq Atlas](https://bymankirat.github.io/swapseq/atlas/) of 30 public tables it was high for adult stool, forehead skin and vaginal swabs, and very low for infant stool, patients on heavy antibiotics, lab mice from one donor and genus-level tables.
+- Detection power depends on the body site and the study. In the [SwapSeq Atlas](https://bymankirat.github.io/swapseq/atlas/) of 36 public tables it was high for adult stool, forehead skin and vaginal swabs, and very low for infant stool, patients on heavy antibiotics, lab mice from one donor and genus-level tables.
 - A flag is evidence, not proof. Check flagged samples against lab records before you relabel or drop anything.
 - This is version 0.3.0 (SwapSeq 1.1.1 engine, method v3). Please report problems at <https://github.com/bymankirat/swapseqr/issues>.
 
