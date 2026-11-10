@@ -1,6 +1,6 @@
 Package: swapseqr
 Title: Detect Swapped and Mislabelled Samples in Longitudinal Microbiome Studies
-Version: 0.3.1
+Version: 0.3.2
 Authors@R: 
     person("Mankirat", "Singh", , "msinghsandal@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0005-3375-2123"))

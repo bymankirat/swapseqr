@@ -115,3 +115,15 @@ test_that("a near-identical sample under another person is reported as a possibl
   clean <- suppressMessages(check_swaps(st$counts, st$subject))
   expect_equal(nrow(attr(clean, "duplicates")), 0)
 })
+
+test_that("missing subject labels and bad input are handled", {
+  st <- make_study()
+  lab <- st$subject; lab[c(4, 17)] <- NA
+  expect_message(res <- check_swaps(st$counts, lab), "no subject label")
+  expect_equal(nrow(res), ncol(st$counts))
+  expect_false(any(res$scorable[c(4, 17)]))
+  expect_equal(sum(res$level == "flag"), 0)
+  x <- st$counts; colnames(x)[2] <- colnames(x)[1]
+  expect_error(check_swaps(x, st$subject), "more than once")
+  expect_error(check_swaps(st$counts, st$subject, prior = 5), "prior must be")
+})

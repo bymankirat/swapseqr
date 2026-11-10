@@ -28,7 +28,9 @@
 #'   communities are near-identical: one tube, extract or file under two names)
 #'   are in `attr(result, "duplicates")`. Swap pairs where both samples point at
 #'   each other's person are strong flags when the table separates planted swaps
-#'   well (`attr(result, "separation")` of 0.7 or more).
+#'   well (`attr(result, "separation")` of 0.7 or more). Samples with a missing
+#'   subject label are left out of the check. Relative abundances are accepted
+#'   and turned into pseudo-counts.
 #' @importFrom methods as
 #' @export
 check_swaps <- function(x, subject, prior = 0.01,
@@ -60,6 +62,14 @@ check_swaps <- function(x, subject, prior = 0.01,
   if (is.null(rownames(counts))) rownames(counts) <- paste0("feature", seq_len(nrow(counts)))
   if (length(subject) != ncol(counts)) stop("Need exactly one subject ID per sample.")
   if (any(counts < 0, na.rm = TRUE)) stop("Counts must be non-negative.")
+  if (!is.numeric(counts)) stop("The table must be numeric (features in rows, samples in columns).")
+  if (anyDuplicated(colnames(counts)))
+    stop("Sample ID '", colnames(counts)[anyDuplicated(colnames(counts))], "' appears more than once. Every sample needs its own ID.")
+  if (!is.numeric(prior) || length(prior) != 1 || is.na(prior) || prior <= 0 || prior >= 0.5)
+    stop("prior must be above 0 and below 0.5 (0.01 means 1%).")
+  n_missing <- sum(is.na(subject) | trimws(as.character(subject)) == "")
+  if (n_missing > 0)
+    message(sprintf("%d sample(s) have no subject label; they are left out of the check and returned with scorable = FALSE.", n_missing))
   counts[is.na(counts)] <- 0
 
   # 3) Engine ke format mein data: har sample ke non-zero features (0-based index) + counts

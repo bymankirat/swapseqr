@@ -1,3 +1,20 @@
+# swapseqr 0.3.2
+
+* Small studies: a clear swap in a table of 24 to 40 samples is now a strong
+  flag (60-70% caught on subsamples of real tables, up from 1-30%), with no
+  more flags on clean labels. People need three or more samples for this.
+* Missing subject labels (`NA` or empty) are left out of the check and returned
+  with `scorable = FALSE`; before, they were treated as one person and could be
+  flagged.
+* Clear errors for duplicate sample IDs, a non-numeric table and a `prior`
+  outside (0, 0.5).
+* Relative abundances are turned into pseudo-counts instead of being swamped
+  by the pseudocount.
+* Two samples with no reads are no longer reported as duplicates; the
+  duplicate check reports only exact copies in tables too small to judge.
+* The "more swap pairs than the prior explains" message needs three or more
+  pairs.
+
 # swapseqr 0.3.1
 
 * Several errors in one table: swap pairs where both samples point at each
